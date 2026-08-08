@@ -2,7 +2,7 @@ from tkinter import *
 from tkinter import ttk
 
 root = Tk()
-title = "BDE Tools"
+title = "Lab Tools"
 root.title(title)
 root.attributes("-topmost", True)
 

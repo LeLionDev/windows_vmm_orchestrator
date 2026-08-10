@@ -42,7 +42,7 @@ the queue root), and only needs to exist before the server's first run:
 
 ```json
 {
-    "labs": ["lab107", "lab111", "lab150", "lab156", "lab157", "lab158"]
+    "labs": ["labA", "labB", "labC", "labD", "labE", "labF"]
 }
 ```
 

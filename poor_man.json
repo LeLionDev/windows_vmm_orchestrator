@@ -1,0 +1,5 @@
+{
+    "poor_man_message_queue_root": "/path/to/your/root/dir",
+    "poor_man_message_init_config": "/path/to/your/root/dir/init.json",
+    "poor_man_db_path": "/path/to/your/db/dir/poor_man.db"
+}

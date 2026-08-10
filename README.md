@@ -1,5 +1,7 @@
 # Poor Man's Lab Checkout Tool
 
+![Tool screenshot](assets/GUI_demo.png)
+
 A lab checkout/reservation tool built around a "poor man's message queue": instead of real
 client-server networking (which is restricted in this environment), the server and clients
 communicate entirely through a shared filesystem directory.

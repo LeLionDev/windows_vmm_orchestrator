@@ -108,8 +108,14 @@ class PoorManServer:
         self.setup_db()
         while True:
             for path in self.poll_root():
-                self.process_message(path)
-            self.export_snapshot()
+                try:
+                    self.process_message(path)
+                except Exception:
+                    logger.exception(f"Failed to process {path}, will retry next poll")
+            try:
+                self.export_snapshot()
+            except Exception:
+                logger.exception("Failed to export snapshot, will retry next poll")
             time.sleep(poll_interval)
 
 

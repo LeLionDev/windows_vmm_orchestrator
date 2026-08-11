@@ -1,5 +1,4 @@
 import functools
-import getpass
 import json
 import os
 import sys
@@ -7,6 +6,8 @@ import uuid
 from datetime import datetime
 from tkinter import *
 from tkinter import ttk
+
+import get_user
 
 def app_dir():
     if getattr(sys, "frozen", False):
@@ -18,7 +19,7 @@ with open(CONFIG_PATH) as f:
     _config = json.load(f)
 ROOT_DIR = _config["poor_man_message_queue_root"]
 
-CURRENT_USER = getpass.getuser()
+CURRENT_USER = get_user.get_display_name()
 
 root = Tk()
 title = "Lab Tools"

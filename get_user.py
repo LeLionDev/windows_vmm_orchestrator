@@ -4,11 +4,15 @@ import json
 import os
 import getpass
 
-def fetch_platform_data() -> str:
+def resolve_username() -> str:
     try:
-        username = os.getlogin()
+        return os.getlogin()
     except OSError:
-        username = getpass.getuser()
+        return getpass.getuser()
+
+
+def fetch_platform_data() -> str:
+    username = resolve_username()
 
     if sys.platform.startswith("win32"):
         ps_command = (
@@ -54,6 +58,17 @@ def fetch_platform_data() -> str:
 def get_current_user_directory_info() -> str:
     directory_string = fetch_platform_data()
     return directory_string
+
+
+def get_display_name() -> str:
+    username = resolve_username()
+
+    try:
+        parsed = json.loads(fetch_platform_data())
+    except (json.JSONDecodeError, TypeError):
+        return username
+
+    return parsed.get("displayName") or username
 
 
 if __name__ == "__main__":

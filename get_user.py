@@ -15,17 +15,7 @@ def fetch_platform_data() -> str:
     username = resolve_username()
 
     if sys.platform.startswith("win32"):
-        ps_command = (
-            f"$Searcher = [adsisearcher]\"(sAMAccountName={username})\"; "
-            "$Result = $Searcher.FindOne(); "
-            "if ($Result) { "
-            "    $Properties = @{}; "
-            "    foreach ($Prop in $Result.Properties.PropertyNames) { "
-            "        $Properties[$Prop] = $Result.Properties[$Prop] -join ', '; "
-            "    }; "
-            "    $Properties | ConvertTo-Json "
-            "}"
-        )
+        ps_command = "Get-ADUser -Identity $env:USERNAME | ConvertTo-Json"
         try:
             process = subprocess.run(
                 ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps_command],
@@ -60,15 +50,24 @@ def get_current_user_directory_info() -> str:
     return directory_string
 
 
+_display_name_cache = None
+
+
 def get_display_name() -> str:
+    global _display_name_cache
+    if _display_name_cache is not None:
+        return _display_name_cache
+
     username = resolve_username()
 
     try:
         parsed = json.loads(fetch_platform_data())
     except (json.JSONDecodeError, TypeError):
-        return username
+        _display_name_cache = username
+        return _display_name_cache
 
-    return parsed.get("displayName") or username
+    _display_name_cache = parsed.get("Name") or username
+    return _display_name_cache
 
 
 if __name__ == "__main__":

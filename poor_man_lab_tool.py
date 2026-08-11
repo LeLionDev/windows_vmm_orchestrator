@@ -3,6 +3,7 @@ import json
 import os
 import subprocess
 import sys
+import threading
 import uuid
 from datetime import datetime
 from tkinter import *
@@ -62,15 +63,18 @@ def do_drag(event):
     y = root.winfo_pointery() - root._drag_offset_y
     root.geometry(f"+{x}+{y}")
 
+def run_background_command(args):
+    def _run():
+        creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        result = subprocess.run(args, capture_output=True, text=True, creationflags=creationflags)
+        print((result.stdout or result.stderr).strip())
+    threading.Thread(target=_run, daemon=True).start()
+
 def kill_all_rdp():
     if not sys.platform.startswith("win32"):
         print("Kill All RDP: only supported on Windows")
         return
-    result = subprocess.run(
-        ["taskkill", "/IM", "mstsc.exe", "/F"],
-        capture_output=True, text=True,
-    )
-    print((result.stdout or result.stderr).strip())
+    run_background_command(["taskkill", "/IM", "mstsc.exe", "/F"])
 
 def toggle_topmost():
     global topmost_enabled

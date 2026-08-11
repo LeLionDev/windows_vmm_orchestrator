@@ -1,6 +1,7 @@
 import functools
 import json
 import os
+import subprocess
 import sys
 import uuid
 from datetime import datetime
@@ -24,7 +25,14 @@ CURRENT_USER = get_user.get_display_name()
 root = Tk()
 title = "Lab Tools"
 root.title(title)
-root.attributes("-topmost", True)
+
+topmost_enabled = True
+
+def reassert_topmost():
+    if topmost_enabled:
+        root.attributes("-topmost", False)
+        root.attributes("-topmost", True)
+    root.after(3000, reassert_topmost)
 
 def snap_to_bottom_right():
     root.update_idletasks()
@@ -55,7 +63,20 @@ def do_drag(event):
     root.geometry(f"+{x}+{y}")
 
 def kill_all_rdp():
-    print("Kill All RDP: not yet implemented")
+    if not sys.platform.startswith("win32"):
+        print("Kill All RDP: only supported on Windows")
+        return
+    result = subprocess.run(
+        ["taskkill", "/IM", "mstsc.exe", "/F"],
+        capture_output=True, text=True,
+    )
+    print((result.stdout or result.stderr).strip())
+
+def toggle_topmost():
+    global topmost_enabled
+    topmost_enabled = not topmost_enabled
+    root.attributes("-topmost", topmost_enabled)
+    topmost_btn.config(text=" 📌 Stay on Top: ON " if topmost_enabled else " 📌 Stay on Top: OFF ")
 
 title_bar = Frame(root, bg="#2e2e2e", height=30)
 title_bar.grid(row=0, column=0, columnspan=6, sticky="ew")
@@ -75,6 +96,9 @@ reset_btn.pack(side="right", fill="y", padx=2)
 
 kill_rdp_btn = Button(title_bar, text=" 💀 Kill All RDP ", command=kill_all_rdp, bg="#2e2e2e", fg="white", bd=0, highlightthickness=0, activebackground="#4a4a4a", activeforeground="white")
 kill_rdp_btn.pack(side="right", fill="y", padx=2)
+
+topmost_btn = Button(title_bar, text=" 📌 Stay on Top: ON ", command=toggle_topmost, bg="#2e2e2e", fg="white", bd=0, highlightthickness=0, activebackground="#4a4a4a", activeforeground="white")
+topmost_btn.pack(side="right", fill="y", padx=2)
 
 root.overrideredirect(True)
 
@@ -162,5 +186,6 @@ def refresh_status():
 
 refresh_status()
 snap_to_bottom_right()
+reassert_topmost()
 
 root.mainloop()

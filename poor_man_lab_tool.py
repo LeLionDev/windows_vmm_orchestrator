@@ -7,7 +7,6 @@ import threading
 import uuid
 from datetime import datetime
 from tkinter import *
-from tkinter import ttk
 
 import get_user
 
@@ -134,7 +133,7 @@ def write_request(lab, action):
 
 def handle_click(lab, action, button):
     button.config(state="disabled")
-    write_request(lab, action)
+    threading.Thread(target=write_request, args=(lab, action), daemon=True).start()
 
 AVAILABLE_BG = "#2e7d32"
 OCCUPIED_BG = "#c62828"

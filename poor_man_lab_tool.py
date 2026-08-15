@@ -9,6 +9,7 @@ from datetime import datetime
 from tkinter import *
 
 import get_user
+from _version import __version__
 
 def app_dir():
     if getattr(sys, "frozen", False):
@@ -23,7 +24,7 @@ ROOT_DIR = _config["poor_man_message_queue_root"]
 CURRENT_USER = get_user.get_display_name()
 
 root = Tk()
-title = "Lab Tools"
+title = f"Lab Tools {__version__}"
 root.title(title)
 
 topmost_enabled = True

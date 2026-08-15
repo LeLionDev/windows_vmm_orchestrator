@@ -110,11 +110,43 @@ lab_widgets = {}
 placeholder_label = Label(root, text="Waiting for server...", anchor="w")
 placeholder_label.grid(row=1, column=0, padx=(15, 15), pady=8, sticky="w")
 
+def _open_shared_read(path):
+    if not sys.platform.startswith("win32"):
+        return open(path)
+
+    import ctypes
+    from ctypes import wintypes
+    import msvcrt
+
+    GENERIC_READ = 0x80000000
+    FILE_SHARE_READ = 0x00000001
+    FILE_SHARE_WRITE = 0x00000002
+    FILE_SHARE_DELETE = 0x00000004
+    OPEN_EXISTING = 3
+    INVALID_HANDLE_VALUE = -1
+
+    CreateFileW = ctypes.windll.kernel32.CreateFileW
+    CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, wintypes.LPVOID, wintypes.DWORD,
+                            wintypes.DWORD, wintypes.HANDLE]
+    CreateFileW.restype = wintypes.HANDLE
+
+    handle = CreateFileW(
+        path, GENERIC_READ,
+        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+        None, OPEN_EXISTING, 0, None
+    )
+
+    if handle == INVALID_HANDLE_VALUE:
+        raise ctypes.WinError(ctypes.get_last_error())
+
+    fd = msvcrt.open_osfhandle(handle, os.O_RDONLY)
+    return os.fdopen(fd, "r")
+
 def load_status():
     status_path = os.path.join(ROOT_DIR, "status.json")
     if not os.path.exists(status_path):
         return None
-    with open(status_path) as f:
+    with _open_shared_read(status_path) as f:
         return json.load(f)
 
 def write_request(lab, action):

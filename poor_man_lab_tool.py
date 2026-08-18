@@ -21,7 +21,7 @@ with open(CONFIG_PATH) as f:
     _config = json.load(f)
 ROOT_DIR = _config["poor_man_message_queue_root"]
 STATUS_PATH = os.path.join(ROOT_DIR, "status.json")
-LAST_MODIFIED = os.path.getmtime(STATUS_PATH) if os.path.exists(STATUS_PATH) else None
+LAST_MODIFIED = None
 
 CURRENT_USER = get_user.get_display_name()
 

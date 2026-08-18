@@ -183,13 +183,13 @@ def refresh_status():
     try:
         modified = os.path.getmtime(STATUS_PATH) if os.path.exists(STATUS_PATH) else None
         if modified != LAST_MODIFIED:
-            LAST_MODIFIED = modified
             status = load_status()
             if status is not None:
                 if not lab_widgets:
                     build_lab_widgets(status)
                 else:
                     update_lab_widgets(status)
+            LAST_MODIFIED = modified
     except Exception as e:
         print(f"refresh_status failed: {e}")
     finally:

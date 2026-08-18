@@ -101,11 +101,10 @@ class PoorManServer:
         if status == self._last_status:
             return
 
-        tmp_path = os.path.join(self.root_dir, ".status.json.tmp")
         final_path = os.path.join(self.root_dir, "status.json")
-        with open(tmp_path, "w") as f:
+        with open(final_path, "w") as f:
             json.dump(status, f)
-        os.replace(tmp_path, final_path)
+
         self._last_status = status
 
     def run(self, poll_interval=3):

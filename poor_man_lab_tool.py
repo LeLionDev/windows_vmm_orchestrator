@@ -20,6 +20,8 @@ CONFIG_PATH = sys.argv[1] if len(sys.argv) > 1 else os.path.join(app_dir(), "poo
 with open(CONFIG_PATH) as f:
     _config = json.load(f)
 ROOT_DIR = _config["poor_man_message_queue_root"]
+STATUS_PATH = os.path.join(ROOT_DIR, "status.json")
+LAST_MODIFIED = os.path.getmtime(STATUS_PATH) if os.path.exists(STATUS_PATH) else None
 
 CURRENT_USER = get_user.get_display_name()
 
@@ -111,43 +113,11 @@ lab_widgets = {}
 placeholder_label = Label(root, text="Waiting for server...", anchor="w")
 placeholder_label.grid(row=1, column=0, padx=(15, 15), pady=8, sticky="w")
 
-def _open_shared_read(path):
-    if not sys.platform.startswith("win32"):
-        return open(path)
-
-    import ctypes
-    from ctypes import wintypes
-    import msvcrt
-
-    GENERIC_READ = 0x80000000
-    FILE_SHARE_READ = 0x00000001
-    FILE_SHARE_WRITE = 0x00000002
-    FILE_SHARE_DELETE = 0x00000004
-    OPEN_EXISTING = 3
-    INVALID_HANDLE_VALUE = -1
-
-    CreateFileW = ctypes.windll.kernel32.CreateFileW
-    CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, wintypes.LPVOID, wintypes.DWORD,
-                            wintypes.DWORD, wintypes.HANDLE]
-    CreateFileW.restype = wintypes.HANDLE
-
-    handle = CreateFileW(
-        path, GENERIC_READ,
-        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-        None, OPEN_EXISTING, 0, None
-    )
-
-    if handle == INVALID_HANDLE_VALUE:
-        raise ctypes.WinError(ctypes.get_last_error())
-
-    fd = msvcrt.open_osfhandle(handle, os.O_RDONLY)
-    return os.fdopen(fd, "r")
-
 def load_status():
-    status_path = os.path.join(ROOT_DIR, "status.json")
-    if not os.path.exists(status_path):
+    if not os.path.exists(STATUS_PATH):
         return None
-    with _open_shared_read(status_path) as f:
+
+    with open(STATUS_PATH) as f:
         return json.load(f)
 
 def write_request(lab, action):
@@ -208,17 +178,23 @@ def update_lab_widgets(status):
             button.config(text="Occupied", state="disabled")
 
 def refresh_status():
+    global LAST_MODIFIED
+
     try:
-        status = load_status()
-        if status is not None:
-            if not lab_widgets:
-                build_lab_widgets(status)
-            else:
-                update_lab_widgets(status)
+        modified = os.path.getmtime(STATUS_PATH) if os.path.exists(STATUS_PATH) else None
+        if modified != LAST_MODIFIED:
+            LAST_MODIFIED = modified
+            status = load_status()
+            if status is not None:
+                if not lab_widgets:
+                    build_lab_widgets(status)
+                else:
+                    update_lab_widgets(status)
     except Exception as e:
         print(f"refresh_status failed: {e}")
     finally:
         root.after(3000, refresh_status)
+
 
 refresh_status()
 snap_to_bottom_right()

@@ -19,6 +19,7 @@ class PoorManServer:
     def __init__(self, config_path):
         self.config_path = config_path
         self.read_config()
+        self._last_status = None
 
     def read_config(self):
         with open(self.config_path) as f:
@@ -97,12 +98,15 @@ class PoorManServer:
         conn.close()
 
         status = {name: occupant for name, occupant in rows}
+        if status == self._last_status:
+            return
 
         tmp_path = os.path.join(self.root_dir, ".status.json.tmp")
         final_path = os.path.join(self.root_dir, "status.json")
         with open(tmp_path, "w") as f:
             json.dump(status, f)
         os.replace(tmp_path, final_path)
+        self._last_status = status
 
     def run(self, poll_interval=3):
         self.setup_db()

@@ -3,6 +3,8 @@ import subprocess
 import json
 import os
 import getpass
+from typing import Optional
+
 
 def resolve_username() -> str:
     try:
@@ -11,65 +13,74 @@ def resolve_username() -> str:
         return getpass.getuser()
 
 
-def fetch_platform_data() -> str:
+def _fetch_windows_full_name() -> Optional[str]:
+    # Uses System.DirectoryServices.AccountManagement (ships with .NET) instead of
+    # Get-ADUser, which requires the RSAT AD PowerShell module to be installed.
+    ps_command = (
+        "try { "
+        "  Add-Type -AssemblyName 'System.DirectoryServices.AccountManagement'; "
+        "  $ctx = New-Object System.DirectoryServices.AccountManagement.PrincipalContext([System.DirectoryServices.AccountManagement.ContextType]::Domain); "
+        "  $u = [System.DirectoryServices.AccountManagement.UserPrincipal]::FindByIdentity($ctx, $env:USERNAME); "
+        "  [PSCustomObject]@{ Name = $u.DisplayName } "
+        "} catch { [PSCustomObject]@{ Name = $null } } | ConvertTo-Json"
+    )
+
+    process = subprocess.run(
+        ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps_command],
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=10,
+    )
+    return json.loads(process.stdout.strip()).get("Name")
+
+
+def _fetch_linux_full_name(username: str) -> Optional[str]:
+    process = subprocess.run(
+        ["getent", "passwd", username],
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=5,
+    )
+    # passwd format: username:password:UID:GID:GECOS:directory:shell
+    fields = process.stdout.strip().split(":")
+    gecos = fields[4] if len(fields) >= 5 else ""
+    return gecos.split(",")[0] or None
+
+
+def fetch_platform_data() -> dict:
     username = resolve_username()
+    result = {"username": username, "full_name": None, "error": None}
 
-    if sys.platform.startswith("win32"):
-        ps_command = "Get-ADUser -Identity $env:USERNAME | ConvertTo-Json"
-        try:
-            process = subprocess.run(
-                ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps_command],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                check=True
-            )
-            return process.stdout.strip()
-        except subprocess.CalledProcessError as e:
-            return f"Windows directory lookup failed: {e.stderr.strip()}"
+    try:
+        if sys.platform.startswith("win32"):
+            result["full_name"] = _fetch_windows_full_name()
+        elif sys.platform.startswith("linux"):
+            result["full_name"] = _fetch_linux_full_name(username)
+        else:
+            result["error"] = f"Unsupported operating system: {sys.platform}"
+    except Exception as e:
+        result["error"] = f"Directory lookup failed: {e}"
 
-    elif sys.platform.startswith("linux"):
-        try:
-            process = subprocess.run(
-                ["getent", "passwd", username],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                check=True
-            )
-            return process.stdout.strip()
-        except subprocess.CalledProcessError:
-            return f"Linux directory lookup failed. User '{username}' might only exist locally."
-
-    else:
-        return f"Unsupported operating system: {sys.platform}"
+    return result
 
 
 def get_current_user_directory_info() -> str:
-    directory_string = fetch_platform_data()
-    return directory_string
+    return json.dumps(fetch_platform_data())
 
 
-_display_name_cache = None
+_identity_cache: Optional[dict] = None
 
 
 def get_display_name() -> str:
-    global _display_name_cache
-    if _display_name_cache is not None:
-        return _display_name_cache
+    global _identity_cache
+    if _identity_cache is None:
+        _identity_cache = fetch_platform_data()
 
-    username = resolve_username()
-
-    try:
-        parsed = json.loads(fetch_platform_data())
-    except (json.JSONDecodeError, TypeError):
-        _display_name_cache = username
-        return _display_name_cache
-
-    _display_name_cache = parsed.get("Name") or username
-    return _display_name_cache
+    return _identity_cache["full_name"] or _identity_cache["username"]
 
 
 if __name__ == "__main__":
-    user_profile_string = get_current_user_directory_info()
-    print(user_profile_string)
+    print(f"DEBUG INFO: {get_current_user_directory_info()}")
+    print(f"USER FULL NAME: {get_display_name()}")

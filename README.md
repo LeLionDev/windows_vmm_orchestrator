@@ -58,7 +58,8 @@ for your environment:
 {
     "poor_man_message_queue_root": "/path/to/your/shared/dir",
     "poor_man_message_init_config": "/path/to/your/shared/dir/init.json",
-    "poor_man_db_path": "/path/to/a/local/dir/poor_man.db"
+    "poor_man_db_path": "/path/to/a/local/dir/poor_man.db",
+    "poor_man_window_corner": "bottom_right"
 }
 ```
 
@@ -66,6 +67,10 @@ for your environment:
 - `poor_man_message_init_config` -- path to the `init.json` from step 2.
 - `poor_man_db_path` -- **must be on local disk on the server machine**, not inside the shared
   directory. This is the one setting that matters most for correctness.
+- `poor_man_window_corner` -- client-only; which screen corner the window snaps to
+  (`top_left`, `top_right`, `bottom_left`, or `bottom_right`). Optional -- defaults to
+  `bottom_right` if omitted, and the client rewrites this automatically whenever you use the
+  Reset corner picker.
 
 Keep a real, filled-in copy of this file out of version control (it's environment-specific) --
 only the placeholder template belongs in the repo.
@@ -93,6 +98,15 @@ A small always-on-top window appears showing each lab: green means free, red mea
 (with the occupant's name shown underneath). Click a free lab's button to check it out; once
 you hold it, the same button becomes "Release".
 
+The toolbar above the labs has three buttons:
+
+- **Reset** -- opens a small picker to snap the window to whichever screen corner you want
+  (top-left, top-right, bottom-left, bottom-right). The chosen corner is remembered in
+  `poor_man.json` and restored on the next launch.
+- **Kill All RDP** -- force-closes all `mstsc.exe` (Remote Desktop) processes on the client
+  machine. Windows only.
+- **Stay on Top** -- toggles whether the window keeps reasserting itself above other windows.
+
 ## Running the tests
 
 ```
@@ -118,7 +132,10 @@ that run it. Building and running it both work without admin rights.
 
 - Checkout is first-come-first-served; a lab can only be released by whoever currently holds
   it.
-- The "Kill All RDP" button in the client is currently a placeholder -- the actual script isn't
-  wired in yet.
+- "Kill All RDP" and window corner-snapping are Windows-tested; the corner picker also works
+  on Linux, but window-manager behavior can vary (Wayland compositors especially).
 - There's no client-driven setup flow; `init.json` is a static file the server reads at
   startup, not something sent from the GUI.
+- The client lays labs out in a single row that grows with the lab count, with no wrapping or
+  scrolling -- keep `init.json` to roughly **6-8 labs** for now. Beyond that the window can
+  grow wider than the screen and push labs off the edge with no way to reach them.

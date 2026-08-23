@@ -135,7 +135,7 @@ def toggle_topmost():
     topmost_btn.config(text=" 📌 Stay on Top: ON " if topmost_enabled else " 📌 Stay on Top: OFF ")
 
 toolbar = Frame(root, bg="#2e2e2e", height=30)
-toolbar.grid(row=0, column=0, columnspan=6, sticky="ew")
+toolbar.grid(row=0, column=0, columnspan=1, sticky="ew")  # widened to fit lab count once build_lab_widgets runs
 
 reset_btn = Button(toolbar, text=" 🔄 Reset ", command=show_corner_picker, bg="#2e2e2e", fg="white", bd=0, highlightthickness=0, activebackground="#4a4a4a", activeforeground="white")
 reset_btn.pack(side="right", fill="y", padx=2)
@@ -181,6 +181,7 @@ OCCUPIED_BG = "#c62828"
 
 def build_lab_widgets(status):
     placeholder_label.grid_forget()
+    toolbar.grid_configure(columnspan=len(status))
     for i, lab in enumerate(sorted(status)):
         name_label = Label(root, text=lab, font=("Arial", 10, "bold"), fg="white")
         name_label.grid(row=1, column=i, padx=(15, 15), pady=(8, 0), sticky="ew")

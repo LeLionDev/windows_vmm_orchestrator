@@ -38,7 +38,7 @@ def save_window_corner(corner):
 
 CURRENT_USER = get_user.get_display_name()
 
-root = Tk()
+root = Tk(className="Lab Tools")
 title = f"Lab Tools {__version__}"
 root.title(title)
 

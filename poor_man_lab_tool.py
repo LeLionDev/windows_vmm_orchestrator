@@ -23,6 +23,19 @@ ROOT_DIR = _config["poor_man_message_queue_root"]
 STATUS_PATH = os.path.join(ROOT_DIR, "status.json")
 LAST_MODIFIED = None
 
+WINDOW_CORNERS = ("top_right", "bottom_right")  # left corners drop off-screen on some Wayland setups
+DEFAULT_WINDOW_CORNER = "bottom_right"
+WINDOW_CORNER = _config.get("poor_man_window_corner", DEFAULT_WINDOW_CORNER)
+if WINDOW_CORNER not in WINDOW_CORNERS:
+    WINDOW_CORNER = DEFAULT_WINDOW_CORNER
+
+def save_window_corner(corner):
+    _config["poor_man_window_corner"] = corner
+    tmp_path = CONFIG_PATH + ".tmp"
+    with open(tmp_path, "w") as f:
+        json.dump(_config, f, indent=4)
+    os.replace(tmp_path, CONFIG_PATH)
+
 CURRENT_USER = get_user.get_display_name()
 
 root = Tk()
@@ -37,7 +50,7 @@ def reassert_topmost():
         root.attributes("-topmost", True)
     root.after(3000, reassert_topmost)
 
-def snap_to_bottom_right():
+def apply_window_geometry():
     root.update_idletasks()
 
     window_width = root.winfo_reqwidth()
@@ -46,10 +59,54 @@ def snap_to_bottom_right():
     screen_width = root.winfo_screenwidth()
     screen_height = root.winfo_screenheight()
 
+    # 10px margin on the right/top edges; 50px on the bottom to clear the taskbar
     x = screen_width - window_width - 10
-    y = screen_height - window_height - 50
+    y = 10 if "top" in WINDOW_CORNER else screen_height - window_height - 50
 
     root.geometry(f"{window_width}x{window_height}+{x}+{y}")
+
+corner_picker = None
+
+def close_corner_picker():
+    global corner_picker
+    if corner_picker is not None:
+        corner_picker.destroy()
+        corner_picker = None
+
+def move_to_corner(corner):
+    global WINDOW_CORNER
+    WINDOW_CORNER = corner
+    save_window_corner(corner)
+    apply_window_geometry()
+    close_corner_picker()
+
+def show_corner_picker():
+    global corner_picker
+    if corner_picker is not None:
+        close_corner_picker()
+        return
+
+    corner_picker = Toplevel(root)
+    corner_picker.overrideredirect(True)
+    corner_picker.attributes("-topmost", True)
+    corner_picker.configure(bg="#2e2e2e")
+    corner_picker.bind("<FocusOut>", lambda e: close_corner_picker())
+
+    x = reset_btn.winfo_rootx() + reset_btn.winfo_width() // 2 - 25
+    y = reset_btn.winfo_rooty() + reset_btn.winfo_height()
+    corner_picker.geometry(f"50x60+{x}+{y}")
+
+    button_label = {"top_right": "↗", "bottom_right": "↘"}
+    for row, corner in enumerate(WINDOW_CORNERS):
+        btn = Button(corner_picker, text=button_label[corner],
+                     command=functools.partial(move_to_corner, corner),
+                     bg="#2e2e2e", fg="white", bd=0, highlightthickness=0,
+                     activebackground="#4a4a4a", activeforeground="white")
+        btn.grid(row=row, column=0, sticky="nsew")
+        corner_picker.grid_rowconfigure(row, weight=1)
+    corner_picker.grid_columnconfigure(0, weight=1)
+
+    corner_picker.focus_set()
 
 def start_drag(event):
     # Calculate the exact distance between the mouse pointer and the top-left edge of the window
@@ -97,7 +154,7 @@ title_label.pack(side="left", pady=5)
 close_btn = Button(title_bar, text=" ✕ ", command=root.destroy, bg="#2e2e2e", fg="white", bd=0, highlightthickness=0, activebackground="red", activeforeground="white")
 close_btn.pack(side="right", fill="y", padx=2)
 
-reset_btn = Button(title_bar, text=" 🔄 Reset ", command=snap_to_bottom_right, bg="#2e2e2e", fg="white", bd=0, highlightthickness=0, activebackground="#4a4a4a", activeforeground="white")
+reset_btn = Button(title_bar, text=" 🔄 Reset ", command=show_corner_picker, bg="#2e2e2e", fg="white", bd=0, highlightthickness=0, activebackground="#4a4a4a", activeforeground="white")
 reset_btn.pack(side="right", fill="y", padx=2)
 
 kill_rdp_btn = Button(title_bar, text=" 💀 Kill All RDP ", command=kill_all_rdp, bg="#2e2e2e", fg="white", bd=0, highlightthickness=0, activebackground="#4a4a4a", activeforeground="white")
@@ -156,7 +213,7 @@ def build_lab_widgets(status):
         lab_widgets[lab] = (name_label, occupant_label, button)
 
     update_lab_widgets(status)
-    snap_to_bottom_right()
+    apply_window_geometry()
 
 def update_lab_widgets(status):
     for lab, (name_label, occupant_label, button) in lab_widgets.items():
@@ -189,6 +246,7 @@ def refresh_status():
                     build_lab_widgets(status)
                 else:
                     update_lab_widgets(status)
+                    apply_window_geometry()
             LAST_MODIFIED = modified
     except Exception as e:
         print(f"refresh_status failed: {e}")
@@ -197,7 +255,7 @@ def refresh_status():
 
 
 refresh_status()
-snap_to_bottom_right()
+apply_window_geometry()
 reassert_topmost()
 
 root.mainloop()

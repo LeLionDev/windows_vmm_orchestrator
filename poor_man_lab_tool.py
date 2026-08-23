@@ -23,7 +23,7 @@ ROOT_DIR = _config["poor_man_message_queue_root"]
 STATUS_PATH = os.path.join(ROOT_DIR, "status.json")
 LAST_MODIFIED = None
 
-WINDOW_CORNERS = ("top_right", "bottom_right")  # left corners drop off-screen on some Wayland setups
+WINDOW_CORNERS = ("top_left", "top_right", "bottom_left", "bottom_right")
 DEFAULT_WINDOW_CORNER = "bottom_right"
 WINDOW_CORNER = _config.get("poor_man_window_corner", DEFAULT_WINDOW_CORNER)
 if WINDOW_CORNER not in WINDOW_CORNERS:
@@ -59,8 +59,8 @@ def apply_window_geometry():
     screen_width = root.winfo_screenwidth()
     screen_height = root.winfo_screenheight()
 
-    # 10px margin on the right/top edges; 50px on the bottom to clear the taskbar
-    x = screen_width - window_width - 10
+    # 10px margin on left/right/top edges; 50px on bottom to clear the taskbar
+    x = 10 if "left" in WINDOW_CORNER else screen_width - window_width - 10
     y = 10 if "top" in WINDOW_CORNER else screen_height - window_height - 50
 
     root.geometry(f"{window_width}x{window_height}+{x}+{y}")
@@ -92,35 +92,28 @@ def show_corner_picker():
     corner_picker.configure(bg="#2e2e2e")
     corner_picker.bind("<FocusOut>", lambda e: close_corner_picker())
 
-    x = reset_btn.winfo_rootx() + reset_btn.winfo_width() // 2 - 25
+    x = reset_btn.winfo_rootx() + reset_btn.winfo_width() // 2 - 45
     y = reset_btn.winfo_rooty() + reset_btn.winfo_height()
-    corner_picker.geometry(f"50x60+{x}+{y}")
+    corner_picker.geometry(f"90x60+{x}+{y}")
 
-    button_label = {"top_right": "↗", "bottom_right": "↘"}
-    for row, corner in enumerate(WINDOW_CORNERS):
+    button_grid = {
+        "top_left": (0, 0), "top_right": (0, 1),
+        "bottom_left": (1, 0), "bottom_right": (1, 1),
+    }
+    button_label = {
+        "top_left": "↖", "top_right": "↗",
+        "bottom_left": "↙", "bottom_right": "↘",
+    }
+    for corner, (row, col) in button_grid.items():
         btn = Button(corner_picker, text=button_label[corner],
                      command=functools.partial(move_to_corner, corner),
                      bg="#2e2e2e", fg="white", bd=0, highlightthickness=0,
                      activebackground="#4a4a4a", activeforeground="white")
-        btn.grid(row=row, column=0, sticky="nsew")
+        btn.grid(row=row, column=col, sticky="nsew")
+        corner_picker.grid_columnconfigure(col, weight=1)
         corner_picker.grid_rowconfigure(row, weight=1)
-    corner_picker.grid_columnconfigure(0, weight=1)
 
     corner_picker.focus_set()
-
-def start_drag(event):
-    # Calculate the exact distance between the mouse pointer and the top-left edge of the window
-    root._drag_offset_x = root.winfo_pointerx() - root.winfo_x()
-    root._drag_offset_y = root.winfo_pointery() - root.winfo_y()
-
-def stop_drag(event):
-    if hasattr(root, '_drag_offset_x'): del root._drag_offset_x
-    if hasattr(root, '_drag_offset_y'): del root._drag_offset_y
-
-def do_drag(event):
-    x = root.winfo_pointerx() - root._drag_offset_x
-    y = root.winfo_pointery() - root._drag_offset_y
-    root.geometry(f"+{x}+{y}")
 
 def run_background_command(args):
     def _run():
@@ -141,29 +134,17 @@ def toggle_topmost():
     root.attributes("-topmost", topmost_enabled)
     topmost_btn.config(text=" 📌 Stay on Top: ON " if topmost_enabled else " 📌 Stay on Top: OFF ")
 
-title_bar = Frame(root, bg="#2e2e2e", height=30)
-title_bar.grid(row=0, column=0, columnspan=6, sticky="ew")
+toolbar = Frame(root, bg="#2e2e2e", height=30)
+toolbar.grid(row=0, column=0, columnspan=6, sticky="ew")
 
-title_bar.bind("<ButtonPress-1>", start_drag)
-title_bar.bind("<ButtonRelease-1>", stop_drag)
-title_bar.bind("<B1-Motion>", do_drag)
-
-title_label = Label(title_bar, text=f"  {title}", font=("Arial", 10, "bold"), fg="white", bg="#2e2e2e")
-title_label.pack(side="left", pady=5)
-
-close_btn = Button(title_bar, text=" ✕ ", command=root.destroy, bg="#2e2e2e", fg="white", bd=0, highlightthickness=0, activebackground="red", activeforeground="white")
-close_btn.pack(side="right", fill="y", padx=2)
-
-reset_btn = Button(title_bar, text=" 🔄 Reset ", command=show_corner_picker, bg="#2e2e2e", fg="white", bd=0, highlightthickness=0, activebackground="#4a4a4a", activeforeground="white")
+reset_btn = Button(toolbar, text=" 🔄 Reset ", command=show_corner_picker, bg="#2e2e2e", fg="white", bd=0, highlightthickness=0, activebackground="#4a4a4a", activeforeground="white")
 reset_btn.pack(side="right", fill="y", padx=2)
 
-kill_rdp_btn = Button(title_bar, text=" 💀 Kill All RDP ", command=kill_all_rdp, bg="#2e2e2e", fg="white", bd=0, highlightthickness=0, activebackground="#4a4a4a", activeforeground="white")
+kill_rdp_btn = Button(toolbar, text=" 💀 Kill All RDP ", command=kill_all_rdp, bg="#2e2e2e", fg="white", bd=0, highlightthickness=0, activebackground="#4a4a4a", activeforeground="white")
 kill_rdp_btn.pack(side="right", fill="y", padx=2)
 
-topmost_btn = Button(title_bar, text=" 📌 Stay on Top: ON ", command=toggle_topmost, bg="#2e2e2e", fg="white", bd=0, highlightthickness=0, activebackground="#4a4a4a", activeforeground="white")
+topmost_btn = Button(toolbar, text=" 📌 Stay on Top: ON ", command=toggle_topmost, bg="#2e2e2e", fg="white", bd=0, highlightthickness=0, activebackground="#4a4a4a", activeforeground="white")
 topmost_btn.pack(side="right", fill="y", padx=2)
-
-root.overrideredirect(True)
 
 lab_widgets = {}
 

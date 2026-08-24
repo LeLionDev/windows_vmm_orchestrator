@@ -77,8 +77,8 @@ def move_to_corner(corner):
     global WINDOW_CORNER
     WINDOW_CORNER = corner
     save_window_corner(corner)
-    apply_window_geometry()
     close_corner_picker()
+    apply_window_geometry()
 
 def show_corner_picker():
     global corner_picker

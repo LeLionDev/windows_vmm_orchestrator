@@ -13,16 +13,23 @@ def resolve_username() -> str:
         return getpass.getuser()
 
 
+def _reorder_display_name(display_name: str) -> str:
+    if "," not in display_name:
+        return display_name
+    last_name, remainder = display_name.rsplit(",")
+    first_middle_split = remainder.strip().split()
+    first_name = first_middle_split[0]
+    return f"{first_name} {last_name}"
+
+
 def _fetch_windows_full_name() -> Optional[str]:
     # Uses System.DirectoryServices.AccountManagement (ships with .NET) instead of
     # Get-ADUser, which requires the RSAT AD PowerShell module to be installed.
     ps_command = (
-        "try { "
         "  Add-Type -AssemblyName 'System.DirectoryServices.AccountManagement'; "
         "  $ctx = New-Object System.DirectoryServices.AccountManagement.PrincipalContext([System.DirectoryServices.AccountManagement.ContextType]::Domain); "
         "  $u = [System.DirectoryServices.AccountManagement.UserPrincipal]::FindByIdentity($ctx, $env:USERNAME); "
-        "  [PSCustomObject]@{ Name = $u.DisplayName } "
-        "} catch { [PSCustomObject]@{ Name = $null } } | ConvertTo-Json"
+        "  [PSCustomObject]@{ Name = $u.DisplayName }.Name "
     )
 
     process = subprocess.run(
@@ -32,7 +39,7 @@ def _fetch_windows_full_name() -> Optional[str]:
         check=True,
         timeout=10,
     )
-    return json.loads(process.stdout.strip()).get("Name")
+    return _reorder_display_name(process.stdout.strip())
 
 
 def _fetch_linux_full_name(username: str) -> Optional[str]:

@@ -36,7 +36,15 @@ def save_window_corner(corner):
         json.dump(_config, f, indent=4)
     os.replace(tmp_path, CONFIG_PATH)
 
-CURRENT_USER = get_user.get_display_name()
+CURRENT_USER = None
+
+def try_resolve_current_user():
+    global CURRENT_USER
+    if CURRENT_USER is not None:
+        return
+    data = get_user.fetch_platform_data()
+    if data["full_name"]:
+        CURRENT_USER = data["full_name"]
 
 root = Tk(className="Lab Tools")
 title = f"Lab Tools {__version__}"
@@ -148,7 +156,10 @@ topmost_btn.pack(side="right", fill="y", padx=2)
 
 lab_widgets = {}
 
-placeholder_label = Label(root, text="Waiting for server...", anchor="w")
+WAITING_FOR_SERVER_MSG = f"Waiting for server... \nEnsure the {ROOT_DIR} is reachable..."
+GATHERING_USER_MSG = "Gathering user details..."
+
+placeholder_label = Label(root, text=WAITING_FOR_SERVER_MSG, anchor="w")
 placeholder_label.grid(row=1, column=0, padx=(15, 15), pady=8, sticky="w")
 
 def load_status():
@@ -219,9 +230,18 @@ def update_lab_widgets(status):
 def refresh_status():
     global LAST_MODIFIED
 
+    try_resolve_current_user()
+
     try:
         modified = os.path.getmtime(STATUS_PATH) if os.path.exists(STATUS_PATH) else None
-        if modified != LAST_MODIFIED:
+
+        if not lab_widgets:
+            if modified is None:
+                placeholder_label.config(text=WAITING_FOR_SERVER_MSG)
+            elif CURRENT_USER is None:
+                placeholder_label.config(text=GATHERING_USER_MSG)
+
+        if modified != LAST_MODIFIED and CURRENT_USER is not None:
             status = load_status()
             if status is not None:
                 if not lab_widgets:
@@ -229,7 +249,7 @@ def refresh_status():
                 else:
                     update_lab_widgets(status)
                     apply_window_geometry()
-            LAST_MODIFIED = modified
+                LAST_MODIFIED = modified
     except Exception as e:
         print(f"refresh_status failed: {e}")
     finally:
